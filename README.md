@@ -1,64 +1,72 @@
 # AutoRecord
 
-轻量化 macOS 自动录制工具。对接采集卡视频流,基于 ROI 颜色检测自动启停录制,无需手动值守。
+轻量化 macOS 自动录制工具。基于 ROI 颜色检测自动启停录制,零第三方依赖,单二进制。
 
 ## 特性
 
-- **自动录制** — 在画面中划定圆形 ROI,当指定颜色(红/白/绿)进入区域自动开始录制,颜色消失自动停止
-- **手动录制** — 按 `R` 键随时启停
-- **实时预览** — 主窗口显示采集卡画面,支持 ROI 拖拽/缩放
-- **状态栏** — 顶部实时显示 `监控中` / `录制（自动）：文件名` / `录制（手动）：文件名`
-- **安全书签** — 首次选目录授权后自动记住,支持外置硬盘,无需反复授权
-- **零依赖** — 纯 Swift + AppKit + AVFoundation,无第三方库
-
-## 快捷键
-
-| 键 | 功能 |
-|---|---|
-| `R` | 手动录制 开/停 |
-| `M` | 监控 开/停 |
-| `Cmd+,` | 设置窗口 开/关 |
-
-## 架构
-
-```
-main.swift         入口:窗口/菜单/快捷键
-AppState.swift     状态中枢:采集引擎 + 录制状态机 + 文件保存
-PreviewTab.swift    主窗口:预览 + ROI 交互
-SettingsTab.swift   设置窗口:ROI 列表 + 参数配置
-TriggerLogic.swift  检测算法:ROI 内目标色匹配
-SharedTypes.swift   共享类型:RGB / ROI / 通知名 / 颜色预设
-```
-
-## 编译
-
-```bash
-swiftc -O main.swift AppState.swift PreviewTab.swift SettingsTab.swift SharedTypes.swift TriggerLogic.swift -o AutoRecord
-```
-
-通用二进制:
-
-```bash
-SDK=$(xcrun --sdk macosx --show-sdk-path)
-swiftc -target arm64-apple-macos12 -sdk "$SDK" -O *.swift -o AutoRecord_arm64
-swiftc -target x86_64-apple-macos12 -sdk "$SDK" -O *.swift -o AutoRecord_x86
-lipo -create -output AutoRecord AutoRecord_arm64 AutoRecord_x86
-```
-
-## 文件命名
-
-录制文件按 `前缀_YYMMDD_HHMMSS_随机字母.mov` 格式自动命名(EXT=自动/INT=手动):
-
-- `EXT_260823_120530_AB.mov` — 自动触发录制
-- `INT_260823_120530_CD.mov` — 手动录制
+- **自动录制** — 监控 ROI 区域颜色变化,触发后自动录制
+- **手动录制** — 快捷键手动控制录制启停
+- **ROI 颜色检测** — 支持最多 3 个 ROI 区域,按颜色变化触发
+- **状态栏状态** — 实时显示监控中 / 录制状态与文件名
+- **预置保存位置** — 可选择外置硬盘作为默认保存路径
+- **轻量化** — 纯 Swift + AVFoundation,单二进制,无运行时依赖
 
 ## 系统要求
 
-- macOS 12+
-- 采集卡(Blackmagic / UltraStudio / DeckLink 或其他 AVFoundation 兼容设备)
+- macOS 12 Monterey 或更高
+- AVFoundation 兼容采集卡
+- (可选)外置硬盘用于保存录制文件
 
-## 权限
+## 下载
 
-- **摄像头** — 预览与录制必需
-- **麦克风** — 录制时可能采集音频
-- **文件夹访问** — 首次选择保存目录时授权一次,之后自动写入(含外置硬盘)
+从 [GitHub Releases](https://github.com/jeremyzhu666/auto-record/releases) 下载最新版本。
+
+## 使用
+
+### 基本操作
+
+1. 打开 AutoRecord,主窗口显示摄像头预览
+2. 在设置面板(⌘,)中配置:
+   - 保存路径(支持外置硬盘)
+   - ROI 区域(最多 3 个)
+   - 触发颜色和容差
+3. 开始监控,满足触发条件后自动录制
+4. 录制文件命名:`EXT_YYMMDD_HHMMSS_XX.mov`(自动)/ `INT_YYMMDD_HHMMSS_XX.mov`(手动)
+
+### 快捷键
+
+| 按键 | 功能 |
+|------|------|
+| ⌘, | 打开 / 关闭设置 |
+| ⌘R | 手动录制开关 |
+| ⌘Q | 退出应用 |
+
+### 状态栏说明
+
+- `监控中` — 正在等待触发条件
+- `录制（EXT）：文件名` — 自动录制进行中
+- `录制（INT）：文件名` — 手动录制进行中
+
+## 构建
+
+```bash
+swiftc -O -target arm64-apple-macos12 \
+    main.swift AppState.swift PreviewTab.swift SettingsTab.swift SharedTypes.swift TriggerLogic.swift \
+    -framework AVFoundation -framework AppKit -framework CoreVideo \
+    -o AutoRecord
+```
+
+## 项目结构
+
+| 文件 | 说明 |
+|------|------|
+| `main.swift` | 应用入口,App 生命周期 |
+| `AppState.swift` | 全局状态管理 |
+| `PreviewTab.swift` | 预览窗口与 ROI 渲染 |
+| `SettingsTab.swift` | 设置面板 UI |
+| `SharedTypes.swift` | 共享类型定义 |
+| `TriggerLogic.swift` | 触发检测逻辑 |
+
+## 许可证
+
+本项目仅供个人使用。
